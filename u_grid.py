@@ -1,5 +1,6 @@
 import random
 import numpy as np
+import collections
 import u_lists
 import math
 
@@ -52,7 +53,7 @@ def gen_obstacles_grid(n,p):
 def gen_dict_weights(n):
     """
     ===========================================================================
-     Description: Return Dictionary of Weights.
+     Description: Return Dictionary of random weights between 1 and n.
     ===========================================================================
      Arguments:
     ---------------------------------------------------------------------------
@@ -224,7 +225,7 @@ def get_valid_idds(grid):
     return valid_idds            
     
     
-def get_neighbors(grid, row, col):
+def get_neighbors(grid, row=None, col=None, idd=None):
     """
     ===========================================================================
      Description: Return List of Valid Neighbors (int).
@@ -238,6 +239,9 @@ def get_neighbors(grid, row, col):
      Return: List of Valid Neighbors (list of int).
     ===========================================================================
     """
+    if not idd == None:
+        row, col = to_row_col(grid, idd)
+        
     def add_neighbor(row, col):
         idd = to_idd(grid, row, col)
         if grid[row][col] >= 0:
@@ -512,6 +516,21 @@ def get_dic_h(grid, goal, lookup=dict(), with_pathmax=False):
     return dic, pathmaxed_nodes               
 
 
+def to_dic_g(grid, start):
+    if not is_valid_idd(grid, start):
+        return dict()
+    opened = collections.deque([(start,0)])
+    closed = dict()    
+    while opened:
+        idd, g = opened.popleft()
+        closed[idd] = g
+        children = set(get_neighbors(grid,idd=idd))
+        for child in children-closed.keys():
+            opened.append((child,g+1))
+    return closed
+            
+        
+
 def to_csv(grid, fr, lr, fc, lc, path):
     """
     ===========================================================================
@@ -550,7 +569,11 @@ def to_csv(grid, fr, lr, fc, lc, path):
 """
 def tester():
     
+    from pathlib import Path
+    path_parent = Path(Path(__file__).parent)
     import sys
+    sys.path.append(str(path_parent) + '\\f_utils')
+    import u_tester
     
     def tester_gen_symmetric_grid():
         grid = gen_symmetric_grid(2)        
@@ -729,15 +752,12 @@ def tester():
         lists = [li_1, li_2, li_3]
         grid = np.array(lists)
         
-        p1 = (get_neighbors(grid,2,2) == [5,7])
-        p2 = (get_neighbors(grid,0,1) == [4])    
-        p3 = (get_neighbors(grid,1,1) == [1,5,7,3])
+        p0 = (get_neighbors(grid,2,2) == [5,7])
+        p1 = (get_neighbors(grid,0,1) == [4])    
+        p2 = (get_neighbors(grid,1,1) == [1,5,7,3])
+        p3 = get_neighbors(grid,idd=4) == [1,5,7,3]
         
-        fname = sys._getframe().f_code.co_name[7:]
-        if (p1 and p2 and p3):
-            print('OK: {0}'.format(fname))
-        else:
-            print('Failed: {0}'.format(fname))
+        u_tester.run([p0,p1,p2,p3])
             
     
     def tester_to_course():
@@ -991,7 +1011,24 @@ def tester():
         else:
             print('Failed: {0}'.format(fname))
             
-            
+    
+    def tester_to_dic_g():
+
+        grid = gen_symmetric_grid(3)
+        start = 0
+        dic_test = to_dic_g(grid, start)
+        dic_true = {0:0, 1:1, 2:2, 3:1, 4:2, 5:3, 6:2, 7:3, 8:4}
+        p0 = dic_test == dic_true
+        
+        grid[0][2] = -1
+        grid[1][0] = -1
+        dic_test = to_dic_g(grid, start)
+        dic_true = {0:0, 1:1, 4:2, 5:3, 6:4, 7:3, 8:4}
+        p1 = dic_test == dic_true
+        
+        u_tester.run([p0,p1])
+        
+        
     def tester_to_csv():
         path = 'C:\\Temp\\to_csv.csv'
         grid = gen_symmetric_grid(5)
@@ -1016,7 +1053,7 @@ def tester():
         
     
     
-    print('\n====================\nStart Tester\n====================')    
+    u_tester.print_start(__file__)   
     tester_gen_symmetric_grid()
     tester_gen_obstacles_grid()
     tester_gen_dict_weights()
@@ -1038,12 +1075,10 @@ def tester():
     tester_xor()
     tester_manhattan_distance()
     tester_get_dic_h()
+    tester_to_dic_g()
     #tester_to_csv()
-    print('====================\nEnd Tester\n====================')
+    u_tester.print_finish(__file__)
     
     
-#tester()
-    
-grid = gen_symmetric_grid(5)
-grid
-
+if __name__ == '__main__':
+    tester()
